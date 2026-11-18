@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' data: blob:">
+  <title>Éditeur PDF</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="../node_modules/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-new" viewBox="0 0 24 24"><path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/><path d="M12 11v6M9 14h6"/></symbol>
+      <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 5h6l2 2h10v12H3z"/></symbol>
+      <symbol id="i-save" viewBox="0 0 24 24"><path d="M4 4h12l4 4v12H4z"/><path d="M8 4v5h7V4"/><path d="M7 20v-6h10v6"/></symbol>
+      <symbol id="i-saveas" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 20h16"/></symbol>
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-4"/></symbol>
+      <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h4"/></symbol>
+      <symbol id="i-select" viewBox="0 0 24 24"><path d="M6 3l13 7.5-5.6 1.6L11 18z"/><path d="M13.4 12.1L18 17"/></symbol>
+      <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 7V4h14v3"/><path d="M12 4v16M9 20h6"/></symbol>
+      <symbol id="i-edittext" viewBox="0 0 24 24"><path d="M3 6V4h10v2M8 4v11M6 15h4"/><path d="M13 20l1-3.5 6-6 2.5 2.5-6 6z"/></symbol>
+      <symbol id="i-highlight" viewBox="0 0 24 24"><path d="M9 12l-4 4v3h3l4-4"/><path d="M9 12l7-7 4 4-7 7z"/><path d="M13 21h8"/></symbol>
+      <symbol id="i-rect" viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/></symbol>
+      <symbol id="i-line" viewBox="0 0 24 24"><path d="M5 19L19 5"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 19L19 5"/><path d="M10 5h9v9"/></symbol>
+      <symbol id="i-ink" viewBox="0 0 24 24"><path d="M3 17c3-6 5-9 7-9s0 7 3 7 3-6 5-6 2 3 3 4"/></symbol>
+      <symbol id="i-whiteout" viewBox="0 0 24 24"><path d="M9 20h11"/><path d="M4 15l9.5-9.5 5 5L13 16l-4 4H8z"/><path d="M9 10l5 5"/></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><circle cx="8.5" cy="10" r="1.5"/><path d="M21 16l-5-5-9 8"/></symbol>
+      <symbol id="i-sign" viewBox="0 0 24 24"><path d="M3 16c2-3 4-8 6-8s-1 7 2 7 3-4 5-4 1 3 4 3"/><path d="M3 20h18"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3M10 11v5M14 11v5"/></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+      <symbol id="i-rotl" viewBox="0 0 24 24"><path d="M3 4v5h5"/><path d="M3.6 9A8.5 8.5 0 1 1 6 17.5"/></symbol>
+      <symbol id="i-rotr" viewBox="0 0 24 24"><path d="M21 4v5h-5"/><path d="M20.4 9A8.5 8.5 0 1 0 18 17.5"/></symbol>
+      <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+      <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+      <symbol id="i-merge" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+      <symbol id="i-extract" viewBox="0 0 24 24"><path d="M14 3h7v7M21 3l-9 9"/><path d="M19 14v6H4V5h6"/></symbol>
+    </defs>
+  </svg>
+
+  <!-- Barre d'application -->
+  <header id="appbar">
+    <div class="brand"><span class="logo">PDF</span><span class="brand-name">Éditeur PDF</span></div>
+    <nav class="menu">
+      <button id="btnNew" title="Nouveau document vierge"><svg class="ic"><use href="#i-new"/></svg>Nouveau</button>
+      <button id="btnOpen" title="Ouvrir un PDF (Ctrl+O)"><svg class="ic"><use href="#i-open"/></svg>Ouvrir</button>
+      <button id="btnSave" title="Enregistrer (Ctrl+S)"><svg class="ic"><use href="#i-save"/></svg>Enregistrer</button>
+      <button id="btnSaveAs" title="Enregistrer sous… (Ctrl+Maj+S)"><svg class="ic"><use href="#i-saveas"/></svg>Enregistrer sous</button>
+      <span class="vsep"></span>
+      <button id="btnUndo" class="icon" title="Annuler (Ctrl+Z)"><svg class="ic"><use href="#i-undo"/></svg></button>
+      <button id="btnRedo" class="icon" title="Rétablir (Ctrl+Y)"><svg class="ic"><use href="#i-redo"/></svg></button>
+    </nav>
+    <div id="docTitle"></div>
+  </header>
+
+  <!-- Ruban d'outils -->
+  <div id="toolbar">
+    <div class="section">
+      <div class="section-body tools">
+        <button class="tool" data-tool="select" title="Sélectionner, déplacer, redimensionner (V)"><svg class="ic"><use href="#i-select"/></svg><span>Sélection</span></button>
+        <button class="tool" data-tool="text" title="Ajouter du texte (T)"><svg class="ic"><use href="#i-text"/></svg><span>Texte</span></button>
+        <button class="tool" data-tool="edittext" title="Modifier un texte existant du PDF (E)"><svg class="ic"><use href="#i-edittext"/></svg><span>Modifier</span></button>
+      </div>
+      <div class="section-label">Texte</div>
+    </div>
+    <div class="section">
+      <div class="section-body tools">
+        <button class="tool" data-tool="highlight" title="Surligner (H)"><svg class="ic"><use href="#i-highlight"/></svg><span>Surligner</span></button>
+        <button class="tool" data-tool="rect" title="Rectangle (R)"><svg class="ic"><use href="#i-rect"/></svg><span>Rectangle</span></button>
+        <button class="tool" data-tool="line" title="Ligne (L)"><svg class="ic"><use href="#i-line"/></svg><span>Ligne</span></button>
+        <button class="tool" data-tool="arrow" title="Flèche (A)"><svg class="ic"><use href="#i-arrow"/></svg><span>Flèche</span></button>
+        <button class="tool" data-tool="ink" title="Dessin à main levée (D)"><svg class="ic"><use href="#i-ink"/></svg><span>Dessin</span></button>
+        <button class="tool" data-tool="whiteout" title="Masquer une zone avec du blanc (W)"><svg class="ic"><use href="#i-whiteout"/></svg><span>Effaceur</span></button>
+      </div>
+      <div class="section-label">Annotation</div>
+    </div>
+    <div class="section">
+      <div class="section-body tools">
+        <button class="tool" id="btnImage" title="Insérer une image"><svg class="ic"><use href="#i-image"/></svg><span>Image</span></button>
+        <button class="tool" id="btnSign" title="Dessiner et insérer une signature"><svg class="ic"><use href="#i-sign"/></svg><span>Signature</span></button>
+      </div>
+      <div class="section-label">Insérer</div>
+    </div>
+    <div class="section grow">
+      <div class="section-body props" id="styleBar">
+        <label class="ctl" data-for="color" title="Couleur"><span>Couleur</span><input type="color" id="ctlColor"></label>
+        <label class="ctl" data-for="font" title="Police"><span>Police</span><select id="ctlFont"></select></label>
+        <label class="ctl" data-for="size" title="Taille du texte (pt)"><span>Taille</span><input type="number" id="ctlSize" min="4" max="200" step="1"></label>
+        <label class="ctl" data-for="stroke" title="Épaisseur du trait (pt)"><span>Épaisseur</span><input type="number" id="ctlStroke" min="0.5" max="30" step="0.5"></label>
+        <label class="ctl check" data-for="fill" title="Remplir le rectangle"><input type="checkbox" id="ctlFill"><span>Remplir</span></label>
+        <button id="btnDelete" class="tool danger" title="Supprimer l'élément sélectionné (Suppr)"><svg class="ic"><use href="#i-trash"/></svg><span>Supprimer</span></button>
+      </div>
+      <div class="section-label">Propriétés</div>
+    </div>
+    <div class="section">
+      <div class="section-body zoom">
+        <button id="btnZoomOut" class="icon" title="Zoom arrière (Ctrl+-)"><svg class="ic"><use href="#i-minus"/></svg></button>
+        <span id="zoomLabel">100 %</span>
+        <button id="btnZoomIn" class="icon" title="Zoom avant (Ctrl++)"><svg class="ic"><use href="#i-plus"/></svg></button>
+        <button id="btnFit" class="icon" title="Ajuster à la largeur (Ctrl+0)"><svg class="ic"><use href="#i-fit"/></svg></button>
+      </div>
+      <div class="section-label">Affichage</div>
+    </div>
+  </div>
+
+  <div id="main">
+    <aside id="sidebar">
+      <div class="side-head">
+        <span>Pages</span>
+        <div class="side-icons">
+          <button id="btnRotL" class="icon" title="Pivoter la page à gauche"><svg class="ic"><use href="#i-rotl"/></svg></button>
+          <button id="btnRotR" class="icon" title="Pivoter la page à droite"><svg class="ic"><use href="#i-rotr"/></svg></button>
+          <button id="btnPageUp" class="icon" title="Monter la page"><svg class="ic"><use href="#i-up"/></svg></button>
+          <button id="btnPageDown" class="icon" title="Descendre la page"><svg class="ic"><use href="#i-down"/></svg></button>
+          <button id="btnDelPage" class="icon danger" title="Supprimer la page"><svg class="ic"><use href="#i-trash"/></svg></button>
+        </div>
+      </div>
+      <div class="side-list">
+        <button id="btnBlank" title="Insérer une page vierge après la page courante"><svg class="ic"><use href="#i-new"/></svg>Insérer une page vierge</button>
+        <button id="btnMerge" title="Insérer les pages d'autres PDF après la page courante"><svg class="ic"><use href="#i-merge"/></svg>Fusionner des PDF</button>
+        <button id="btnExtract" title="Enregistrer la page courante dans un nouveau PDF"><svg class="ic"><use href="#i-extract"/></svg>Extraire la page</button>
+      </div>
+      <div id="thumbs"></div>
+    </aside>
+
+    <section id="viewer">
+      <div id="empty">
+        <div class="empty-inner">
+          <span class="logo big">PDF</span>
+          <h1>Éditeur PDF</h1>
+          <p>Ouvrez un document pour commencer, ou faites glisser un fichier PDF dans cette fenêtre.</p>
+          <div class="row">
+            <button id="emptyOpen" class="primary"><svg class="ic"><use href="#i-open"/></svg>Ouvrir un PDF</button>
+            <button id="emptyNew" class="secondary"><svg class="ic"><use href="#i-new"/></svg>Nouveau document</button>
+          </div>
+          <dl class="shortcuts">
+            <dt>Ctrl+O</dt><dd>Ouvrir</dd>
+            <dt>Ctrl+S</dt><dd>Enregistrer</dd>
+            <dt>Ctrl+Z</dt><dd>Annuler</dd>
+            <dt>Ctrl+molette</dt><dd>Zoom</dd>
+          </dl>
+        </div>
+      </div>
+      <div id="pageWrap" hidden>
+        <canvas id="base"></canvas>
+        <canvas id="overlay"></canvas>
+      </div>
+    </section>
+  </div>
+
+  <footer id="status"><span id="statusLeft"></span><span id="statusRight"></span></footer>
+
+  <div id="toast" hidden></div>
+  <div id="busy" hidden><div class="busy-box"><div class="progress"></div><span id="busyText"></span></div></div>
+
+  <div class="modal" id="modalPrompt" hidden>
+    <div class="modal-card">
+      <div class="modal-head" id="promptTitle"></div>
+      <div class="modal-body">
+        <p id="promptLabel"></p>
+        <input id="promptInput" type="password">
+      </div>
+      <div class="modal-foot">
+        <button id="promptCancel" class="secondary">Annuler</button>
+        <button id="promptOk" class="primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalSign" hidden>
+    <div class="modal-card wide">
+      <div class="modal-head">Signature</div>
+      <div class="modal-body">
+        <p>Dessinez votre signature à la souris ou au stylet dans le cadre ci-dessous.</p>
+        <canvas id="signCanvas" width="700" height="240"></canvas>
+        <div class="sign-opts">
+          <label>Couleur
+            <select id="signColor">
+              <option value="#111827">Noir</option>
+              <option value="#1d4ed8">Bleu</option>
+            </select>
+          </label>
+          <label>Épaisseur <input type="range" id="signWidth" min="1" max="8" value="3"></label>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button id="signClear" class="secondary left">Effacer</button>
+        <button id="signCancel" class="secondary">Annuler</button>
+        <button id="signOk" class="primary">Insérer</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
