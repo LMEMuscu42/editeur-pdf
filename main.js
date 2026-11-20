@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 
@@ -13,14 +13,30 @@ async function readEntry(p) {
   return { path: p, name: path.basename(p), data: await fs.readFile(p) };
 }
 
+// Une seule fenêtre : un PDF ouvert via « Ouvrir avec » alors que l'appli tourne
+// est transmis à la fenêtre existante.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', async (e, argv) => {
+    if (!win) return;
+    if (win.isMinimized()) win.restore();
+    win.focus();
+    const p = fileFromArgv(argv);
+    if (p) {
+      try { win.webContents.send('open-file', await readEntry(p)); } catch { /* fichier illisible */ }
+    }
+  });
+}
+
 function createWindow() {
   win = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 900,
+    width: 1440,
+    height: 920,
+    minWidth: 960,
     minHeight: 600,
     title: 'Éditeur PDF',
-    backgroundColor: '#eef0f4',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1b1e23' : '#ffffff',
     icon: path.join(__dirname, 'build', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -69,7 +85,10 @@ ipcMain.handle('open-image', async () => {
   return readEntry(r.filePaths[0]);
 });
 
-ipcMain.handle('read-path', async (e, p) => readEntry(p));
+ipcMain.handle('read-path', async (e, p) => {
+  if (typeof p !== 'string' || !p.toLowerCase().endsWith('.pdf')) throw new Error('Fichier non PDF');
+  return readEntry(p);
+});
 
 ipcMain.handle('save-pdf', async (e, { data, path: target, suggestedName }) => {
   let out = target;
@@ -105,6 +124,10 @@ ipcMain.handle('initial-file', async () => {
 });
 
 ipcMain.on('set-dirty', (e, d) => { dirty = !!d; });
+ipcMain.on('add-recent', (e, p) => { try { if (typeof p === 'string') app.addRecentDocument(p); } catch { /* ignore */ } });
+ipcMain.on('set-theme', (e, t) => {
+  nativeTheme.themeSource = ['dark', 'light'].includes(t) ? t : 'system';
+});
 
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => app.quit());

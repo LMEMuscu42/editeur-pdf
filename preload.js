@@ -8,5 +8,8 @@ contextBridge.exposeInMainWorld('api', {
   confirm: (args) => ipcRenderer.invoke('confirm', args),
   initialFile: () => ipcRenderer.invoke('initial-file'),
   setDirty: (d) => ipcRenderer.send('set-dirty', d),
+  addRecent: (p) => ipcRenderer.send('add-recent', p),
+  setTheme: (t) => ipcRenderer.send('set-theme', t),
+  onOpenFile: (cb) => ipcRenderer.on('open-file', (e, entry) => cb(entry)),
   pathForFile: (f) => { try { return webUtils.getPathForFile(f); } catch { return null; } },
 });
